@@ -11,7 +11,7 @@ from reader import data_producer
 learning_rate = 0.001
 display_step = 200
 
-epoch_size = 100
+epoch_size = 1000
 batch_size = 10
 num_steps = 50
 
@@ -41,7 +41,8 @@ def RNN(x, weights, biases):
     outputs, states = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
 
     # Linear activation, using rnn inner loop last output
-    return [tf.matmul(outputs[i], weights['out']) + biases['out'] for i in range(len(outputs))]
+    return tf.convert_to_tensor([tf.matmul(outputs[i], weights['out']) + biases['out'] for i in range(len(outputs))])
+    # return tf.matmul(outputs[-1], weights['out']) + biases['out']
 
 
 # Prepare data shape to match `rnn` function requirements
@@ -54,12 +55,16 @@ logits_series = RNN(x_series, weights, biases)
 y_series = tf.unstack(Y, num_steps, num_input)
 
 # Define loss and optimizer
-loss_op = sum([tf.reduce_sum(tf.square(y_series[i] - x_series[i])) for i in range(len(y_series))])
+loss_op = tf.reduce_sum(
+    tf.convert_to_tensor([tf.reduce_sum(tf.square(y_series[i] - logits_series[i])) for i in range(len(y_series))]))
+# loss_op = tf.reduce_sum(tf.square(y_series[-1] - logits_series))
 optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
 train_op = optimizer.minimize(loss_op)
 
 sin_producer = data_producer.DataProducer(batch_size, num_steps)
-batch_x, batch_y = sin_producer.sin_producer(epoch_size)
+x, y = sin_producer.sin_producer(epoch_size)
+x = tf.reshape(x, [batch_size, num_steps, num_input])
+y = tf.reshape(y, [batch_size, num_steps, num_output])
 
 # Initialize the variables (i.e. assign their default value)
 init = tf.global_variables_initializer()
@@ -74,6 +79,7 @@ with tf.Session() as sess:
 
     try:
         for step in range(epoch_size):
+            batch_x, batch_y = sess.run([x, y])
             # Run optimization op (backprop)
             sess.run(train_op, feed_dict={X: batch_x, Y: batch_y})
             if step % display_step == 0 or step == 1:
