@@ -8,10 +8,10 @@ from tensorflow.contrib import rnn
 from reader import data_producer
 
 # Training Parameters
-learning_rate = 0.001
+learning_rate = 0.0001
 display_step = 200
 
-epoch_size = 1000
+epoch_size = 2000
 batch_size = 10
 num_steps = 50
 
@@ -50,9 +50,9 @@ def RNN(x, weights, biases):
 # Required shape: 'timesteps' tensors list of shape (batch_size, n_input)
 
 # Unstack to get a list of 'timesteps' tensors of shape (batch_size, n_input)
-x_series = tf.unstack(X, num_steps, num_input)
+x_series = tf.unstack(X, num_steps, axis=1)
 logits_series = RNN(x_series, weights, biases)
-y_series = tf.unstack(Y, num_steps, num_input)
+y_series = tf.unstack(Y, num_steps, axis=1)
 
 # Define loss and optimizer
 loss_op = tf.reduce_sum(
@@ -77,15 +77,23 @@ with tf.Session() as sess:
     coord = tf.train.Coordinator()
     tf.train.start_queue_runners(sess, coord=coord)
 
+    test_x = None
+    test_y = None
     try:
         for step in range(epoch_size):
+            if step == 0:
+                test_x, test_y = sess.run([x, y])
+                continue
+
             batch_x, batch_y = sess.run([x, y])
             # Run optimization op (backprop)
             sess.run(train_op, feed_dict={X: batch_x, Y: batch_y})
             if step % display_step == 0 or step == 1:
                 # Calculate batch loss and accuracy
-                loss = sess.run(loss_op, feed_dict={X: batch_x,
-                                                    Y: batch_y})
+                loss = sess.run(loss_op, feed_dict={X: batch_x, Y: batch_y})
+                print(batch_y)
+                print('logits_series is:')
+                print(sess.run(logits_series, feed_dict={X: batch_x}))
                 print("Step " + str(step) + ", Minibatch Loss= " + \
                       "{:.4f}".format(loss))
     finally:
@@ -93,6 +101,12 @@ with tf.Session() as sess:
         coord.join()
 
     print("Optimization Finished!")
+
+    print(test_y)
+    print('test logits_series is:')
+    print(sess.run(logits_series, feed_dict={X: test_x}))
+    loss = sess.run(loss_op, feed_dict={X: test_x, Y: test_y})
+    print("Minibatch Loss= {:.4f}".format(loss))
 
 # if __name__ == '__main__':
 #     epoch_size = 100
