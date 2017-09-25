@@ -3,6 +3,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
 
 from tensorflow.contrib import rnn
 from reader import data_producer
@@ -104,25 +106,16 @@ with tf.Session() as sess:
 
     print(test_y)
     print('test logits_series is:')
-    print(sess.run(logits_series, feed_dict={X: test_x}))
+    logits_value = sess.run(logits_series, feed_dict={X: test_x})
+    print(logits_value)
     loss = sess.run(loss_op, feed_dict={X: test_x, Y: test_y})
     print("Minibatch Loss= {:.4f}".format(loss))
 
-# if __name__ == '__main__':
-#     epoch_size = 100
-#     batch_size = 10
-#     num_steps = 50
-#
-#     sin_producer = data_producer.DataProducer(batch_size, num_steps)
-#     x, y = sin_producer.sin_producer(epoch_size)
-#     with tf.Session() as session:
-#         coord = tf.train.Coordinator()
-#         tf.train.start_queue_runners(session, coord=coord)
-#         try:
-#             xval, yval = session.run([x, y])
-#             print(xval, yval)
-#             xval, yval = session.run([x, y])
-#             print(xval, yval)
-#         finally:
-#             coord.request_stop()
-#             coord.join()
+    x_points = np.linspace(0, num_steps * 0.1, num_steps)
+    y_points = [item[-1][0] for item in logits_value]
+    test_x_points = [item[0] for item in test_x[-1]]
+
+    plt.plot(x_points, y_points, 'ro')
+    plt.plot(x_points, test_x_points, 'bo')
+
+    plt.show()
