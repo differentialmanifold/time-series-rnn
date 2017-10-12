@@ -5,6 +5,7 @@ from __future__ import print_function
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 from tensorflow.contrib import rnn
 from reader import data_producer
@@ -16,6 +17,9 @@ display_step = 200
 epoch_size = 2000
 batch_size = 10
 num_steps = 50
+save_path = os.path.join(os.path.dirname(__file__), '../data')
+if not os.path.exists(save_path):
+    os.makedirs(save_path)
 
 # Network Parameters
 num_input = 1  # MNIST data input (img shape: 28*28)
@@ -70,11 +74,16 @@ y = tf.reshape(y, [batch_size, num_steps, num_output])
 
 # Initialize the variables (i.e. assign their default value)
 init = tf.global_variables_initializer()
+saver = tf.train.Saver()
 
 # Start training
 with tf.Session() as sess:
-    # Run the initializer
-    sess.run(init)
+    ckpt = tf.train.get_checkpoint_state(save_path)
+    if ckpt and ckpt.model_checkpoint_path:
+        saver.restore(sess, ckpt.model_checkpoint_path)
+    else:
+        # Run the initializer
+        sess.run(init)
 
     coord = tf.train.Coordinator()
     tf.train.start_queue_runners(sess, coord=coord)
@@ -93,21 +102,17 @@ with tf.Session() as sess:
             if step % display_step == 0 or step == 1:
                 # Calculate batch loss and accuracy
                 loss = sess.run(loss_op, feed_dict={X: batch_x, Y: batch_y})
-                print(batch_y)
-                print('logits_series is:')
-                print(sess.run(logits_series, feed_dict={X: batch_x}))
                 print("Step " + str(step) + ", Minibatch Loss= " + \
                       "{:.4f}".format(loss))
     finally:
         coord.request_stop()
         coord.join()
 
+    saver.save(sess, os.path.join(save_path, 'model.ckpt'))
     print("Optimization Finished!")
 
-    print(test_y)
     print('test logits_series is:')
     logits_value = sess.run(logits_series, feed_dict={X: test_x})
-    print(logits_value)
     loss = sess.run(loss_op, feed_dict={X: test_x, Y: test_y})
     print("Minibatch Loss= {:.4f}".format(loss))
 
