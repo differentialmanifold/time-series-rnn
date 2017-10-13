@@ -12,3 +12,4 @@ checkpoint
 htmlcov
 mnist
 data/*
+.idea/*

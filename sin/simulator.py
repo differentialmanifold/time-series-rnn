@@ -17,6 +17,7 @@ display_step = 200
 epoch_size = 2000
 batch_size = 10
 num_steps = 50
+predict_len = 100
 save_path = os.path.join(os.path.dirname(__file__), '../data')
 if not os.path.exists(save_path):
     os.makedirs(save_path)
@@ -29,6 +30,7 @@ num_output = 1  # MNIST total classes (0-9 digits)
 # tf Graph input
 X = tf.placeholder(tf.float32, [None, num_steps, num_input])
 Y = tf.placeholder(tf.float32, [None, num_steps, num_output])
+X_predict = tf.placeholder(tf.float32, [1, num_input])
 
 # Define weights
 weights = {
@@ -44,11 +46,36 @@ def RNN(x, weights, biases):
     lstm_cell = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
 
     # Get lstm cell output
-    outputs, states = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
+    # outputs, states = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
+
+    state = lstm_cell.zero_state(batch_size, tf.float32)
+    outputs = []
+    with tf.variable_scope("RNN"):
+        for time_step in range(num_steps):
+            if time_step > 0: tf.get_variable_scope().reuse_variables()
+            (cell_output, state) = lstm_cell(x[time_step], state)
+            outputs.append(cell_output)
 
     # Linear activation, using rnn inner loop last output
     return tf.convert_to_tensor([tf.matmul(outputs[i], weights['out']) + biases['out'] for i in range(len(outputs))])
     # return tf.matmul(outputs[-1], weights['out']) + biases['out']
+
+
+def predict_new_point():
+    lstm_cell = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
+
+    state = lstm_cell.zero_state(1, tf.float32)
+    cell_input = X_predict
+
+    outputs = []
+    with tf.variable_scope("RNN"):
+        for time_step in range(predict_len):
+            tf.get_variable_scope().reuse_variables()
+            (cell_output, state) = lstm_cell(cell_input, state)
+
+            cell_input = tf.matmul(cell_output, weights['out']) + biases['out']
+            outputs.append(cell_input)
+    return outputs
 
 
 # Prepare data shape to match `rnn` function requirements
@@ -66,6 +93,8 @@ loss_op = tf.reduce_sum(
 # loss_op = tf.reduce_sum(tf.square(y_series[-1] - logits_series))
 optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
 train_op = optimizer.minimize(loss_op)
+
+predict_logits_series = predict_new_point()
 
 sin_producer = data_producer.DataProducer(batch_size, num_steps)
 x, y = sin_producer.sin_producer(epoch_size)
@@ -116,6 +145,8 @@ with tf.Session() as sess:
     loss = sess.run(loss_op, feed_dict={X: test_x, Y: test_y})
     print("Minibatch Loss= {:.4f}".format(loss))
 
+    predict_logits_value = sess.run(predict_logits_series, feed_dict={X_predict: [[0.0]]})
+
     x_points = np.linspace(0, num_steps * 0.1, num_steps)
     y_points = [item[-1][0] for item in logits_value]
     test_x_points = [item[0] for item in test_x[-1]]
@@ -123,4 +154,9 @@ with tf.Session() as sess:
     plt.plot(x_points, y_points, 'ro')
     plt.plot(x_points, test_x_points, 'bo')
 
+    plt.show()
+
+    x_points = np.linspace(0, predict_len * 0.1, predict_len)
+    y_points = [item[0][0] for item in predict_logits_value]
+    plt.plot(x_points, y_points, 'ro')
     plt.show()
