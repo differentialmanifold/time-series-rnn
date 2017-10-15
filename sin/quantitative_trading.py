@@ -9,6 +9,7 @@ import os
 
 from tensorflow.contrib import rnn
 from reader import data_producer
+from tensorflow.python.ops import math_ops
 
 # Training Parameters
 learning_rate = 0.0001
@@ -25,7 +26,7 @@ if not os.path.exists(save_path):
 # Network Parameters
 num_input = 1
 num_hidden = 128  # hidden layer num of features
-num_output = 7
+num_output = 1
 
 # tf Graph input
 X = tf.placeholder(tf.float32, [None, num_steps, num_input])
@@ -84,17 +85,17 @@ x_series = tf.unstack(X, num_steps, axis=1)
 logits_series = RNN(x_series, weights, biases)
 y_series = tf.unstack(Y, num_steps, axis=1)
 
+logits_series = math_ops.tanh(logits_series)
 # Define loss and optimizer
-account = tf.convert_to_tensor([1.0, 0.0])
-choose_options = tf.constant([(-1.0, 1), (-0.5, 1), (-0.25, 1), (0, 0), (0.25, 0), (0.5, 0), (1.0, 0)])
-index = tf.argmax(logits_series, 1)
-choosed = tf.gather(choose_options, index)
+account = tf.constant([1.0, 0.0])
 for i in range(len(y_series)):
-    change = tf.gather(account, tf.to_int32(choosed[0][1])) * choosed[0][0]
+    # change = tf.gather(account, tf.to_int32(choosed[0][1])) * choosed[0][0]
+    change = tf.cond(logits_series[i][0][0] > 0, lambda: account[0] * logits_series[i][0][0],
+                     lambda: account[1] * logits_series[i][0][0])
     new_account1 = account[0] - change
-    new_account2 = (account[1] + change) * (1 + y_series[i][0])
+    new_account2 = (account[1] + change) * (1 + 0.1 * y_series[i][0][0])
     account = tf.convert_to_tensor([new_account1, new_account2])
-loss_op = -tf.log(tf.reduce_sum(account))
+loss_op = 1 / tf.reduce_sum(account)
 
 # loss_op = tf.reduce_sum(
 #     tf.convert_to_tensor([tf.reduce_sum(tf.square(y_series[i] - logits_series[i])) for i in range(len(y_series))]))

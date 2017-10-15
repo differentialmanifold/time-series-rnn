@@ -14,7 +14,7 @@ class DataProducer(object):
     def sin_data(self, epoch_size, batch_size, num_steps):
         num_point = (epoch_size * num_steps + 1) * batch_size
         raw_data = np.linspace(0, 0.1 * num_point, num_point)
-        return 0.02 * np.sin(raw_data) + np.random.randn(num_point) * 0.001
+        return np.sin(raw_data) + np.random.randn(num_point) * 0.1
 
     def sin_producer(self, epoch_size, name=None):
         raw_data = self.sin_data(epoch_size, self.batch_size, self.num_steps)
