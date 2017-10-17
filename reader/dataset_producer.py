@@ -9,7 +9,7 @@ class DatasetProducer(object):
         self.num_steps = num_steps
 
     def producer(self):
-        data_path = 'C:/Users/Yi/workspace/data/stock/399300.csv'
+        data_path = '../data/399300.csv'
         data = pd.read_csv(data_path, encoding='GBK')
 
         data = data['涨跌幅'][-2::-1].values.astype(np.float32)

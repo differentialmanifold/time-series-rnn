@@ -12,9 +12,9 @@ from reader import dataset_producer
 
 # Training Parameters
 learning_rate = 0.0001
-display_step = 600
+display_step = 200
 
-epoch_size = 200
+epoch_size = 600
 batch_size = 5
 num_steps = 100
 predict_len = 100
@@ -140,10 +140,16 @@ with tf.Session() as sess:
 
 x_points = np.linspace(0, num_steps * 0.1, num_steps)
 y_points = [item[-1][0] for item in logits_value]
-test_x_points = [item[0] for item in test_x[-1]]
+test_y_points = [item[0] for item in test_y[-1]]
 
 plt.plot(x_points, y_points, 'ro')
-plt.plot(x_points, test_x_points, 'bo')
+plt.plot(x_points, test_y_points, 'bo')
+
+print('y_points is {}'.format(y_points))
+print('test_y_points is {}'.format(test_y_points))
+fit_arr = (np.sign(y_points) == np.sign(test_y_points)).astype(np.float32)
+print('fore accuracy is {}'.format(np.mean(fit_arr[:len(fit_arr) // 2])))
+print('after accuracy is {}'.format(np.mean(fit_arr[len(fit_arr) // 2:])))
 
 plt.show()
 

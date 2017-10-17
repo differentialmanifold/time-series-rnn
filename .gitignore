@@ -13,3 +13,4 @@ htmlcov
 mnist
 data/*
 .idea/*
+!data/*.csv
